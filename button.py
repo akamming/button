@@ -19,6 +19,7 @@ state = 0 # 0=both on, 1 = Only TV on, 2=only Marquee on, 3 = both off.
 debug = False;
 ignorepidfile=False;
 PowerSave=False;
+counter=0;
 
 def Log(tekst):
     if len(logfilename)==0:
@@ -102,15 +103,16 @@ def Button_Release():
             SavePower()
 
 def Worker():
+    global counter
     #Do some logging
     Log("Button.py started....")
 
     #Main loop
     try:
-        counter=0
         while True:
             time.sleep(1)
             if button.is_pressed:
+                Debug("Counter="+str(counter))
                 counter+=1
                 Debug("Counter="+str(counter))
                 if counter>3:
@@ -118,8 +120,8 @@ def Worker():
                     marquee.off()
                     TV.off()
                     os.system("sudo init 0")
-                else:
-                    counter=0
+            else:
+                counter=0
     except KeyboardInterrupt:
         Log("Keyboard interrupt, removing PID file")
         os.remove(pf)
