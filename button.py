@@ -9,8 +9,8 @@ import signal
 import sys, getopt
 
 #define global vars
-marquee = OutputDevice(2, active_high=True) # Marquee is connected to GPIO2. Change the number in this line in case connected to other pin. 
-TV = OutputDevice(4,  active_high=True)  #
+marquee = OutputDevice(2, active_high=False, initial_value=True) # Marquee is connected to GPIO2. Change the number in this line in case connected to other pin. 
+TV = OutputDevice(4,  active_high=False, initial_value=True)  #
 button = Button(3)  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
 pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
@@ -83,23 +83,23 @@ def Button_Release():
         # handling state
         if state==0:
             Log("Button Pressed, switching on tv and marquee")
-            TV.off()
-            marquee.off()
+            TV.on()
+            marquee.on()
             RestorePower()
         elif state==1:
             Log("Button Pressed, switching on tv, switching off marquee")
-            TV.off()
-            marquee.on()
+            TV.on()
+            marquee.off()
             RestorePower()
         elif state==2:
             Log("Button pressed, switching off tv, switching on marquee")
-            TV.on()
-            marquee.off()
+            TV.off()
+            marquee.on()
             SavePower()
         elif state==3:
             Log("Button Pressed, switching off tv and marquee")
-            TV.on()
-            marquee.on()
+            TV.off()
+            marquee.off()
             SavePower()
 
 def Worker():
