@@ -9,8 +9,8 @@ import signal
 import sys, getopt
 
 #define global vars
-marquee = OutputDevice(2, active_high=False) # Marquee is connected to GPIO2. Change the number in this line in case connected to other pin. 
-TV = OutputDevice(4,  active_high=False)  #
+marquee = OutputDevice(2, active_high=True) # Marquee is connected to GPIO2. Change the number in this line in case connected to other pin. 
+TV = OutputDevice(4,  active_high=True)  #
 button = Button(3)  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
 pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
