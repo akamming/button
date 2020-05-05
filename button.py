@@ -59,10 +59,46 @@ def Button_Press():
 
     Debug("Event: Button Pressed")
     timestamp = datetime.datetime.now()
+        
+def HandleState():        
+    # handling state
+    if state==0:
+        Log("Button Pressed, switching on tv and marquee")
+        TV.on()
+        marquee.on()
+        RestorePower()
+    elif state==1:
+        Log("Button Pressed, switching on tv, switching off marquee")
+        TV.on()
+        marquee.off()
+        RestorePower()
+    elif state==2:
+        Log("Button pressed, switching off tv, switching on marquee")
+        TV.off()
+        marquee.on()
+        SavePower()
+    elif state==3:
+        Log("Button Pressed, switching off tv and marquee")
+        TV.off()
+        marquee.off()
+        SavePower()
+    else:
+        Log("Error: Unknown state")
+
+def NextState():
+    global state
+
+    #Inc state (unless it's 3, then it should return to state 0
+    if state<3:
+        state+=1
+    else:
+        state=0
+
+    #Toggle the pins
+    HandleState()
 
 def Button_Release():
     global timestamp
-    global state
 
     timestamp2=datetime.datetime.now()
     delta=timestamp2-timestamp
@@ -71,36 +107,8 @@ def Button_Release():
     if milliseconds<50:
         Debug("too short, Ignoring event")
     else: 
-        #Log("Shutdown button pressed, shutting down")
-        #os.system("sudo init 0")
-
-        # change to next state
-        if state<3:
-            state+=1
-        else:
-            state=0
-
-        # handling state
-        if state==0:
-            Log("Button Pressed, switching on tv and marquee")
-            TV.on()
-            marquee.on()
-            RestorePower()
-        elif state==1:
-            Log("Button Pressed, switching on tv, switching off marquee")
-            TV.on()
-            marquee.off()
-            RestorePower()
-        elif state==2:
-            Log("Button pressed, switching off tv, switching on marquee")
-            TV.off()
-            marquee.on()
-            SavePower()
-        elif state==3:
-            Log("Button Pressed, switching off tv and marquee")
-            TV.off()
-            marquee.off()
-            SavePower()
+        #Go to next state
+        NextState()
 
 def Worker():
     global counter
@@ -112,12 +120,10 @@ def Worker():
         while True:
             time.sleep(1)
             if button.is_pressed:
-                Debug("Counter="+str(counter))
                 counter+=1
-                Debug("Counter="+str(counter))
                 if counter>3:
                     Log("Button pressed for 3 seconds, Shutting down....")
-                    marquee.off()
+                    marquee.on()
                     TV.off()
                     os.system("sudo init 0")
             else:
