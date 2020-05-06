@@ -7,6 +7,7 @@ import os
 import datetime
 import signal
 import sys, getopt
+import keyboard
 
 #define global vars
 marquee = OutputDevice(2, active_high=False, initial_value=True) # Marquee is connected to GPIO2. Change the number in this line in case connected to other pin. 
@@ -16,10 +17,13 @@ pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
 timestamp = datetime.datetime.now()
 state = 0 # 0=both on, 1 = Only TV on, 2=only Marquee on, 3 = both off.
-debug = False;
-ignorepidfile=False;
-PowerSave=False;
-counter=0;
+debug = False
+ignorepidfile=False
+PowerSave=False
+counter=0
+ScreenSaver=False
+screensavetimeout=0
+ScreenSaving=False
 
 def Log(tekst):
     if len(logfilename)==0:
@@ -54,11 +58,15 @@ def RestorePower():
         Log("Setting cpu governer back to normal (ondemand)")
         os.system("sudo cpufreq-set -g ondemand")
 
-def Button_Press():
+def On_Button_Press():
     global timestamp
 
-    Debug("Event: Button Pressed")
+    Debug("Event: Power Button Pressed")
     timestamp = datetime.datetime.now()
+    
+    #disable screensaver if it was active
+    DeactivateScreensaver()
+
         
 def HandleState():        
     # handling state
@@ -85,6 +93,29 @@ def HandleState():
     else:
         Log("Error: Unknown state")
 
+def ActivateScreensaver():
+    global ScreenSaving
+
+    if (not ScreenSaving):
+        if (not state==3):
+            Log("Activating screensaver")
+            ScreenSaving=True
+            TV.off()
+            marquee.off()
+        else:
+            Debug("not activating screensaver, since TV and marquee are already off")
+    else:
+        Debug("not activating screensaver")
+
+def DeactivateScreensaver():
+    global ScreenSaving
+    if (ScreenSaving):
+        Log("Deactivating Screensaver")
+        ScreenSaving=False
+        HandleState()
+    #else:
+    #    Debug("Not deactivating screensaver")
+
 def NextState():
     global state
 
@@ -97,28 +128,52 @@ def NextState():
     #Toggle the pins
     HandleState()
 
-def Button_Release():
+def On_Button_Release():
     global timestamp
 
-    timestamp2=datetime.datetime.now()
-    delta=timestamp2-timestamp
-    milliseconds=int(delta.total_seconds()*1000)
-    Debug("button release after "+str(milliseconds)+" milliseconds")
-    if milliseconds<50:
-        Debug("too short, Ignoring event")
-    else: 
-        #Go to next state
-        NextState()
+    Debug("Event: Power button released")
+
+    if (ScreenSaving):
+        #disable screensaver if it was active
+        DeactivateScreensaver()
+    else:
+        timestamp2=datetime.datetime.now()
+        delta=timestamp2-timestamp
+        milliseconds=int(delta.total_seconds()*1000)
+        Debug("button release after "+str(milliseconds)+" milliseconds")
+        if milliseconds<50:
+            Debug("too short, Ignoring event")
+        else: 
+            #Go to next state
+            NextState()
+
+        #Update timestamp for sreensaver
+        timestamp=timestamp2
+
+def On_Keyboard_Event(event):
+    global timestamp
+
+    Debug("Keyboard Event: " +str(event.name)+", "+str(event.event_type))
+    #resetting timestamp to prevent screensaver kicking in
+    timestamp=datetime.datetime.now()
+    
+    #disable screensaver if it was active
+    DeactivateScreensaver()
+
+    
 
 def Worker():
     global counter
+    global ScreenSaving
     #Do some logging
-    Log("Button.py started....")
+    Log("mainworker started....")
 
     #Main loop
     try:
         while True:
             time.sleep(1)
+
+            #Check if we have to do a shutdown
             if button.is_pressed:
                 counter+=1
                 if counter>3:
@@ -128,10 +183,20 @@ def Worker():
                     os.system("sudo init 0")
             else:
                 counter=0
+
+            #Check if we have to start screensaving
+            if (ScreenSaver and not ScreenSaving):
+                #calculate time difference
+                timestamp2=datetime.datetime.now()
+                delta=timestamp2-timestamp
+                elapsedseconds=int(delta.total_seconds())
+                #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
+                if (elapsedseconds>=screensavetimeout):
+                    ActivateScreensaver()
+
     except KeyboardInterrupt:
         Log("Keyboard interrupt, removing PID file")
         os.remove(pf)
-
 
 def Initialize():
     Debug ("Logfile="+logfilename+", pidfile="+pf)
@@ -151,12 +216,15 @@ def Initialize():
     signal.signal(signal.SIGINT, GracefulKill)
     signal.signal(signal.SIGTERM, GracefulKill)
 
-    #Set functions on button inputs
-    button.when_pressed = Button_Press 
-    button.when_released = Button_Release
+    #Set functions on power button inputs
+    button.when_pressed = On_Button_Press 
+    button.when_released = On_Button_Release
+
+    #SetKeyboadrd hook for screensaving function
+    keyboard.hook(On_Keyboard_Event)
 
 def Usage():
-      print 'button.py [-h] [-f] [-d] [-p pidfile] [-l logfile]'
+      print 'button.py [-h] [-f] [-c] [-p pidfile] [-l logfile] [-s timeout in seconds]'
 
 def main(argv):
     # Check command line options
@@ -165,9 +233,11 @@ def main(argv):
     global debug
     global ignorepidfile
     global PowerSave
+    global ScreenSaver
+    global screensavetimeout
 
     try:
-        opts, args = getopt.getopt(argv,"hdfsp:l:",["pidfile=","logfile=","help","force","debug"])
+        opts, args = getopt.getopt(argv,"hdfcp:l:s:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving"])
     except getopt.GetoptError:
         Usage()
         sys.exit(2)
@@ -179,15 +249,19 @@ def main(argv):
             Debug("Debugging is enabled")
         elif opt in ("-p", "--pidfile"):
             pf = arg
-            Debug("Pidfile changed to "+pf)
-        elif opt in ("-s", "--powersave"):
+            Log("Pidfile changed to "+pf)
+        elif opt in ("-c", "--cpupowersaving"):
             PowerSave=True;
-            Debug("Powersaving on...")
+            Log("CPU Powersaving on...")
+        elif opt in ("-s", "--screensavetimeout"):
+            ScreenSaver=True
+            screensavetimeout=int(arg) 
+            Log("Activate screensaver after "+str(screensavetimeout)+" seconds")
         elif opt in ("-l", "--logfile"):
             logfilename = arg
             Debug("Logfile changed to "+logfilename)
         elif opt in ("-f", "--force"):
-            Debug("-f specified, ignoring existing pidfile("+pf+")")
+            Log("ignoring existing pidfile("+pf+")")
             ignorepidfile=True;
 
     
