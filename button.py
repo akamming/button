@@ -124,7 +124,7 @@ def Worker():
                 if counter>3:
                     Log("Button pressed for 3 seconds, Shutting down....")
                     marquee.on()
-                    TV.off()
+                    TV.on()
                     os.system("sudo init 0")
             else:
                 counter=0
