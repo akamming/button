@@ -242,13 +242,15 @@ def main(argv):
     global screensavetimeout
 
     try:
-        opts, args = getopt.getopt(argv,"hdfcp:l:s:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving"])
+        opts, args = getopt.getopt(argv,"hhdfcp:l:s:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving"])
     except getopt.GetoptError:
         Usage()
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-h", "--help"):
+            Debug("-h was specified")
             Usage()
+            sys.exit(0)
         elif opt in ("-d", "--debug"):
             debug=True
             Debug("Debugging is enabled")
