@@ -71,22 +71,22 @@ def On_Button_Press():
 def HandleState():        
     # handling state
     if state==0:
-        Log("Button Pressed, switching on tv and marquee")
+        Log("switching on tv and marquee")
         TV.on()
         marquee.on()
         RestorePower()
     elif state==1:
-        Log("Button Pressed, switching on tv, switching off marquee")
+        Log("switching on tv, switching off marquee")
         TV.on()
         marquee.off()
         RestorePower()
     elif state==2:
-        Log("Button pressed, switching off tv, switching on marquee")
+        Log("switching off tv, switching on marquee")
         TV.off()
         marquee.on()
         SavePower()
     elif state==3:
-        Log("Button Pressed, switching off tv and marquee")
+        Log("switching off tv and marquee")
         TV.off()
         marquee.off()
         SavePower()
@@ -152,6 +152,7 @@ def On_Button_Release():
 
 def On_Keyboard_Event(event):
     global timestamp
+    global state
 
     Debug("Keyboard Event: " +str(event.name)+", "+str(event.event_type))
     #resetting timestamp to prevent screensaver kicking in
@@ -160,7 +161,11 @@ def On_Keyboard_Event(event):
     #disable screensaver if it was active
     DeactivateScreensaver()
 
-    
+    #if state=2 or 3 (everything off), switch to state 0 at keyboard event
+    if (state==2 or state==3):
+        Debug("State was 2 or 3 on keyboard event, switching to 0")
+        state=0
+        HandleState()
 
 def Worker():
     global counter
