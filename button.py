@@ -24,6 +24,7 @@ counter=0
 ScreenSaver=False
 screensavetimeout=0
 ScreenSaving=False
+Simple=False
 
 def Log(tekst):
     if len(logfilename)==0:
@@ -130,6 +131,7 @@ def NextState():
 
 def On_Button_Release():
     global timestamp
+    global state
 
     Debug("Event: Power button released")
 
@@ -137,15 +139,26 @@ def On_Button_Release():
         #disable screensaver if it was active
         DeactivateScreensaver()
     else:
+        #check if press was long enough
         timestamp2=datetime.datetime.now()
         delta=timestamp2-timestamp
         milliseconds=int(delta.total_seconds()*1000)
         Debug("button release after "+str(milliseconds)+" milliseconds")
-        if milliseconds<50:
+        if milliseconds<10:
             Debug("too short, Ignoring event")
-        else: 
-            #Go to next state
-            NextState()
+        else:
+            #we have a valid press, handle it
+            if Simple:
+                if state==0:
+                    state=3
+                    Debug("Simple mode: switching off tv and marquee")
+                else:
+                    Debug("Simple Mode: Switching on tv and marquee")
+                    state=0
+                #Make sure the state is handled
+                HandleState()
+            else:
+                NextState()
 
         #Update timestamp for sreensaver
         timestamp=timestamp2
@@ -178,15 +191,24 @@ def Worker():
         while True:
             time.sleep(1)
 
-            #Check if we have to do a shutdown
             if button.is_pressed:
+                #increade seconds counts
                 counter+=1
+
+                #check if we have to reboot or shutdown
                 if counter>3:
-                    Log("Button pressed for 3 seconds, Shutting down....")
-                    marquee.on()
-                    TV.on()
-                    os.system("sudo init 0")
+                    if Simple:
+                        Log("Button pressed for 3 seconds, Restarting....")
+                        marquee.on()
+                        TV.on()
+                        os.system("sudo init 6")
+                    else:
+                        Log("Button pressed for 3 seconds, Shutting down....")
+                        marquee.on()
+                        TV.on()
+                        os.system("sudo init 0")
             else:
+                #button not pressed, resetting timer
                 counter=0
 
             #Check if we have to start screensaving
@@ -240,9 +262,10 @@ def main(argv):
     global PowerSave
     global ScreenSaver
     global screensavetimeout
+    global Simple
 
     try:
-        opts, args = getopt.getopt(argv,"hhdfcp:l:s:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving"])
+        opts, args = getopt.getopt(argv,"hihdfcp:l:s:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving","simple"])
     except getopt.GetoptError:
         Usage()
         sys.exit(2)
@@ -254,6 +277,9 @@ def main(argv):
         elif opt in ("-d", "--debug"):
             debug=True
             Debug("Debugging is enabled")
+        elif opt in ("-i", "--simple"):
+            Simple=True
+            Debug("Simple Mode is enabled")
         elif opt in ("-p", "--pidfile"):
             pf = arg
             Log("Pidfile changed to "+pf)
