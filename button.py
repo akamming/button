@@ -271,27 +271,26 @@ def ReadConfig(ConfigFile):
     config=ConfigParser()
     config.read(ConfigFile)
 
-    debug=config.getboolean('button','debug')
-    Debug("Debugging on...")
-    pf=config.get('button','pidfile')
-    Debug("PF = "+pf)
-    logfilename=config.get('button','logfile')
-    Debug("logfile = "+logfilename)
-    ignorepidfile=config.getboolean('button','force')
-    Debug("Ignorepidfile = "+str(ignorepidfile))
-    PowerSave=config.getboolean('button','powersave')
-    Debug("powersave = "+str(PowerSave))
-    screensavetimeout=config.getint('button','screensavetimeout')
-    Debug("Screensavetimeout = "+str(screensavetimeout))
-    ScreenSaver=config.getboolean('button','ScreenSaver')
-    Debug("ScreenSaver = "+str(ScreenSaver))
-    Simple=config.getboolean('button','simplemode')
-    Debug("SimpleMode = "+str(Simple))
-
-
-
-
-    
+    try:
+        debug=config.getboolean('button','debug')
+        Debug("Debugging on...")
+        pf=config.get('button','pidfile')
+        Debug("PF = "+pf)
+        logfilename=config.get('button','logfile')
+        Debug("logfile = "+logfilename)
+        ignorepidfile=config.getboolean('button','force')
+        Debug("Ignorepidfile = "+str(ignorepidfile))
+        PowerSave=config.getboolean('button','powersave')
+        Debug("powersave = "+str(PowerSave))
+        screensavetimeout=config.getint('button','screensavetimeout')
+        Debug("Screensavetimeout = "+str(screensavetimeout))
+        ScreenSaver=config.getboolean('button','ScreenSaver')
+        Debug("ScreenSaver = "+str(ScreenSaver))
+        Simple=config.getboolean('button','simplemode')
+        Debug("SimpleMode = "+str(Simple))
+    except Exception:
+        Log("Error reading configfile")
+        sys.exit(2)
 
 def main(argv):
     # Check command line options
