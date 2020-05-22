@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from configparser import ConfigParser
 from gpiozero import Button 
 from gpiozero import OutputDevice 
 import time
@@ -185,6 +186,8 @@ def Worker():
     global ScreenSaving
     #Do some logging
     Log("mainworker started....")
+    
+    Debug("Worker: Screensavetimeout = "+str(screensavetimeout))
 
     #Main loop
     try:
@@ -251,7 +254,44 @@ def Initialize():
     keyboard.hook(On_Keyboard_Event)
 
 def Usage():
-      print 'button.py [-h] [-f] [-c] [-p pidfile] [-l logfile] [-s timeout in seconds]'
+      print 'button.py [-h] [-f] [-i] [-c] [-p pidfile] [-l logfile] [-s timeout in seconds]'
+
+def ReadConfig(ConfigFile):
+    global pf
+    global logfilename
+    global debug
+    global ignorepidfile
+    global PowerSave
+    global ScreenSaver
+    global screensavetimeout
+    global Simple
+
+    Log("Reading config from file "+ConfigFile)
+
+    config=ConfigParser()
+    config.read(ConfigFile)
+
+    debug=config.getboolean('button','debug')
+    Debug("Debugging on...")
+    pf=config.get('button','pidfile')
+    Debug("PF = "+pf)
+    logfilename=config.get('button','logfile')
+    Debug("logfile = "+logfilename)
+    ignorepidfile=config.getboolean('button','force')
+    Debug("Ignorepidfile = "+str(ignorepidfile))
+    PowerSave=config.getboolean('button','powersave')
+    Debug("powersave = "+str(PowerSave))
+    screensavetimeout=config.getint('button','screensavetimeout')
+    Debug("Screensavetimeout = "+str(screensavetimeout))
+    ScreenSaver=config.getboolean('button','ScreenSaver')
+    Debug("ScreenSaver = "+str(ScreenSaver))
+    Simple=config.getboolean('button','simplemode')
+    Debug("SimpleMode = "+str(Simple))
+
+
+
+
+    
 
 def main(argv):
     # Check command line options
@@ -265,7 +305,7 @@ def main(argv):
     global Simple
 
     try:
-        opts, args = getopt.getopt(argv,"hihdfcp:l:s:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving","simple"])
+        opts, args = getopt.getopt(argv,"hihdfdp:l:s:c:",["pidfile=","logfile=","help","force","debug","screensavetimeout=","cpupowersaving","simple","configfile="])
     except getopt.GetoptError:
         Usage()
         sys.exit(2)
@@ -280,16 +320,20 @@ def main(argv):
         elif opt in ("-i", "--simple"):
             Simple=True
             Debug("Simple Mode is enabled")
+        elif opt in ("-c", "--configfile"):
+            configfile = arg
+            Debug("Using configfile "+configfile)
+            ReadConfig(configfile)
         elif opt in ("-p", "--pidfile"):
             pf = arg
-            Log("Pidfile changed to "+pf)
-        elif opt in ("-c", "--cpupowersaving"):
+            Debug("Pidfile changed to "+pf)
+        elif opt in ("-d", "--cpupowersaving"):
             PowerSave=True;
             Log("CPU Powersaving on...")
         elif opt in ("-s", "--screensavetimeout"):
             ScreenSaver=True
             screensavetimeout=int(arg) 
-            Log("Activate screensaver after "+str(screensavetimeout)+" seconds")
+            Debug("Activate screensaver after "+str(screensavetimeout)+" seconds")
         elif opt in ("-l", "--logfile"):
             logfilename = arg
             Debug("Logfile changed to "+logfilename)
@@ -297,7 +341,6 @@ def main(argv):
             Log("ignoring existing pidfile("+pf+")")
             ignorepidfile=True;
 
-    
     #Initialize and start worker 
     Initialize()
     Worker()
