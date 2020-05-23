@@ -67,7 +67,7 @@ def On_Button_Press():
     timestamp = datetime.datetime.now()
     
     #disable screensaver if it was active
-    DeactivateScreensaver()
+    #DeactivateScreensaver()
 
         
 def HandleState():        
@@ -97,26 +97,27 @@ def HandleState():
 
 def ActivateScreensaver():
     global ScreenSaving
-
-    if (not ScreenSaving):
-        if (not state==3):
-            Log("Activating screensaver")
-            ScreenSaving=True
-            TV.off()
-            marquee.off()
-        else:
-            Debug("not activating screensaver, since TV and marquee are already off")
+    global state
+    
+    if (ScreenSaving):
+        Debug("Screensaver already active...")
     else:
-        Debug("not activating screensaver")
+        Log("Activating screensaver")
+        ScreenSaving=True
+        state=3
+        HandleState()
 
 def DeactivateScreensaver():
     global ScreenSaving
+    global state
+    
     if (ScreenSaving):
         Log("Deactivating Screensaver")
         ScreenSaving=False
+        state=0
         HandleState()
-    #else:
-    #    Debug("Not deactivating screensaver")
+    else:
+        Debug("Not deactivating screensaver")
 
 def NextState():
     global state
@@ -136,19 +137,18 @@ def On_Button_Release():
 
     Debug("Event: Power button released")
 
-    if (ScreenSaving):
-        #disable screensaver if it was active
-        DeactivateScreensaver()
+    #check if press was long enough
+    timestamp2=datetime.datetime.now()
+    delta=timestamp2-timestamp
+    milliseconds=int(delta.total_seconds()*1000)
+    Debug("button release after "+str(milliseconds)+" milliseconds")
+    if milliseconds<10:
+        Debug("too short, Ignoring event")
     else:
-        #check if press was long enough
-        timestamp2=datetime.datetime.now()
-        delta=timestamp2-timestamp
-        milliseconds=int(delta.total_seconds()*1000)
-        Debug("button release after "+str(milliseconds)+" milliseconds")
-        if milliseconds<10:
-            Debug("too short, Ignoring event")
+        #we have a valid press
+        if (ScreenSaving):
+            DeactivateScreensaver()
         else:
-            #we have a valid press, handle it
             if Simple:
                 if state==0:
                     state=3
@@ -161,8 +161,8 @@ def On_Button_Release():
             else:
                 NextState()
 
-        #Update timestamp for sreensaver
-        timestamp=timestamp2
+    #Update timestamp for sreensaver
+    timestamp=timestamp2
 
 def On_Keyboard_Event(event):
     global timestamp
@@ -171,15 +171,18 @@ def On_Keyboard_Event(event):
     Debug("Keyboard Event: " +str(event.name)+", "+str(event.event_type))
     #resetting timestamp to prevent screensaver kicking in
     timestamp=datetime.datetime.now()
-    
-    #disable screensaver if it was active
-    DeactivateScreensaver()
 
-    #if state=2 or 3 (everything off), switch to state 0 at keyboard event
-    if (state==2 or state==3):
-        Debug("State was 2 or 3 on keyboard event, switching to 0")
-        state=0
-        HandleState()
+    if (ScreenSaving):
+        #disable screensaver if it was active
+        DeactivateScreensaver()
+    else:
+        #if state=2 (TV off) or 3 (everything off), switch to state 0 at keyboard event
+        if (state==2 or state==3):
+            Debug("State was 2 or 3 on keyboard event, switching to 0")
+            state=0
+            HandleState()
+        else:
+            Debug("Ignoring keyboard event")
 
 def Worker():
     global counter
