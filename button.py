@@ -26,6 +26,7 @@ ScreenSaver=False
 screensavetimeout=0
 ScreenSaving=False
 Simple=False
+screensaveroverrides=""
 
 def Log(tekst):
     if len(logfilename)==0:
@@ -95,12 +96,36 @@ def HandleState():
     else:
         Log("Error: Unknown state")
 
+def CheckForRunningProcesses(processes):
+    #global var to check if any process was found
+    processfound=False
+
+    #process procesnames
+    splittedprocessnames=processes.split(",")
+    for processname in splittedprocessnames:
+        Debug ("Checking for "+processname)
+        tmp = os.popen("ps -Af").read()
+        proccount = tmp.count(processname)
+        if proccount > 0:
+            Debug(str(proccount)+' processes running of '+processname+'type')
+            processfound=True
+        else:
+            Debug(processname+' not active')
+
+    if processfound:
+        Debug('One or more processes found, do not activate screensaver')
+    else:
+        Debug('Screensaver can be actived')
+
+    return processfound
+
+
 def ActivateScreensaver():
     global ScreenSaving
     global state
     
-    if (ScreenSaving):
-        Debug("Screensaver already active...")
+    if (CheckForRunningProcesses(screensaveroverrides)):
+        Debug("Not activating because an override process is active...")
     else:
         Log("Activating screensaver")
         ScreenSaving=True
@@ -268,6 +293,7 @@ def ReadConfig(ConfigFile):
     global ScreenSaver
     global screensavetimeout
     global Simple
+    global screensaveroverrides
 
     Log("Reading config from file "+ConfigFile)
 
@@ -289,6 +315,8 @@ def ReadConfig(ConfigFile):
         Debug("Screensavetimeout = "+str(screensavetimeout))
         ScreenSaver=config.getboolean('button','ScreenSaver')
         Debug("ScreenSaver = "+str(ScreenSaver))
+        screensaveroverrides=config.get('button','screensaveroverrides')
+        Debug("ScreenSaverOverrides = "+screensaveroverrides)
         Simple=config.getboolean('button','simplemode')
         Debug("SimpleMode = "+str(Simple))
     except Exception:
