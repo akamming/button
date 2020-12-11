@@ -16,6 +16,7 @@ TV = OutputDevice(4,  active_high=False, initial_value=True)  #
 button = Button(3)  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
 pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
+spotifyplaysfile = "" #location of file which exists if spotify is playing
 timestamp = datetime.datetime.now()
 state = 0 # 0=both on, 1 = Only TV on, 2=only Marquee on, 3 = both off.
 debug = False
@@ -212,6 +213,9 @@ def On_Keyboard_Event(event):
 def Worker():
     global counter
     global ScreenSaving
+    global state
+    global timestamp
+
     #Do some logging
     Log("mainworker started....")
     
@@ -242,15 +246,28 @@ def Worker():
                 #button not pressed, resetting timer
                 counter=0
 
-            #Check if we have to start screensaving
-            if (ScreenSaver and not ScreenSaving):
-                #calculate time difference
-                timestamp2=datetime.datetime.now()
-                delta=timestamp2-timestamp
-                elapsedseconds=int(delta.total_seconds())
-                #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
-                if (elapsedseconds>=screensavetimeout):
-                    ActivateScreensaver()
+            if os.path.exists(spotifyplaysfile):
+                if (state!=0):
+                    Debug("Spotify plays, so make sure we can here it")
+                    state=0
+                    HandleState()
+
+                #Reset timestamp, so screen is not immediately blank after last song
+                timestamp=datetime.datetime.now()
+
+                #Deactive Screensaver if it was active
+                if ScreenSaving:
+                    DeactiveScreenSaver()
+            else:
+                #Check if we have to start screensaving
+                if (ScreenSaver and not ScreenSaving):
+                    #calculate time difference
+                    timestamp2=datetime.datetime.now()
+                    delta=timestamp2-timestamp
+                    elapsedseconds=int(delta.total_seconds())
+                    #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
+                    if (elapsedseconds>=screensavetimeout):
+                        ActivateScreensaver()
 
     except KeyboardInterrupt:
         Log("Keyboard interrupt, removing PID file")
@@ -287,6 +304,7 @@ def Usage():
 def ReadConfig(ConfigFile):
     global pf
     global logfilename
+    global spotifyplaysfile
     global debug
     global ignorepidfile
     global PowerSave
@@ -307,6 +325,8 @@ def ReadConfig(ConfigFile):
         Debug("PF = "+pf)
         logfilename=config.get('button','logfile')
         Debug("logfile = "+logfilename)
+        spotifyplaysfile=config.get('button','spotifyplaysfile')
+        Debug("Spotifyplaysfile = "+spotifyplaysfile)
         ignorepidfile=config.getboolean('button','force')
         Debug("Ignorepidfile = "+str(ignorepidfile))
         PowerSave=config.getboolean('button','powersave')
