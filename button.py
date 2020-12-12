@@ -17,6 +17,7 @@ button = Button(3)  # Power button connected to GPIO3. Change the number in this
 pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
 spotifyplaysfile = "" #location of file which exists if spotify is playing
+spotifystopcommand = "service raspotify restart"  # default value
 timestamp = datetime.datetime.now()
 state = 0 # 0=both on, 1 = Only TV on, 2=only Marquee on, 3 = both off.
 debug = False
@@ -157,6 +158,21 @@ def NextState():
     #Toggle the pins
     HandleState()
 
+def StopSpotify():
+    if os.path.exists(spotifyplaysfile):
+        Debug("Spotify is playing, switch off")
+        # Remove triggerfile
+        try:
+            os.remove(spotifyplaysfile)
+        except:
+            Debug("Error deleting spotifyplaysfile")
+
+        #Stop stopify play
+        os.system(spotifystopcommand)
+
+    else:
+        Debug("Spotify not playing")
+
 def On_Button_Release():
     global timestamp
     global state
@@ -179,6 +195,8 @@ def On_Button_Release():
                 if state==0:
                     state=3
                     Debug("Simple mode: switching off tv and marquee")
+                    StopSpotify()
+
                 else:
                     Debug("Simple Mode: Switching on tv and marquee")
                     state=0
@@ -327,6 +345,8 @@ def ReadConfig(ConfigFile):
         Debug("logfile = "+logfilename)
         spotifyplaysfile=config.get('button','spotifyplaysfile')
         Debug("Spotifyplaysfile = "+spotifyplaysfile)
+        spotifystopcommand=config.get('button','spotifystopcommand')
+        Debug("Spotifystopcommand = "+spotifystopcommand)
         ignorepidfile=config.getboolean('button','force')
         Debug("Ignorepidfile = "+str(ignorepidfile))
         PowerSave=config.getboolean('button','powersave')
