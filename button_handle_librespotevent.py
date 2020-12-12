@@ -90,17 +90,17 @@ def main(argv):
     ListEnvVars()
 
     if Event=="start" or Event=="change" or Event=="playing":
-        Log("Creating triggerfile")
+        Log("Spotify event: "+str(Event)+", Creating triggerfile")
         f = open(spotifyplaysfile, "a+")
         f.write(str(datetime.datetime.now())+" HandleSpotifyEvent: "+Event+" with song "+ TrackID +"\n")
         f.close
 
     if Event=="stop" or Event=="paused":
-        Log("Deleting triggerfile")
+        Log("Spotify event: "+str(Event)+", Deleting triggerfile")
         try:
             os.remove(spotifyplaysfile)
         except:
-            Log("Error deleting spotifyplaysfile")
+            Debug("Error deleting spotifyplaysfile")
 
 
 

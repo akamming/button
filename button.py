@@ -257,7 +257,7 @@ def Worker():
 
                 #Deactive Screensaver if it was active
                 if ScreenSaving:
-                    DeactiveScreenSaver()
+                    DeactivateScreensaver()
             else:
                 #Check if we have to start screensaving
                 if (ScreenSaver and not ScreenSaving):
