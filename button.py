@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+from mpd import MPDClient
 from configparser import ConfigParser
 from gpiozero import Button 
 from gpiozero import OutputDevice 
 import time
-import urllib2
+#import urllib2
 import os
 import datetime
 import signal
@@ -32,7 +33,7 @@ screensaveroverrides=""
 
 def Log(tekst):
     if len(logfilename)==0:
-        print tekst
+        print (tekst)
     else:
         f = open(logfilename, "a+")
         f.write(str(datetime.datetime.now())+" "+str(tekst)+"\n")
@@ -41,7 +42,7 @@ def Log(tekst):
 def Debug(tekst):
     if debug:
         if len(logfilename)==0:
-            print "Debug: "+str(tekst)
+            print ("Debug: "+str(tekst))
         else:
             if debug:
                 f = open(logfilename, "a+")
@@ -120,6 +121,21 @@ def CheckForRunningProcesses(processes):
         Debug('Screensaver can be actived')
 
     return processfound
+
+def CheckForAudioPlayers():
+
+    #librespot
+    spotifyplays=os.path.exists(spotifyplaysfile)
+
+
+    #mpd
+    client = MPDClient()               # create client object
+    client.connect("localhost", 6600)  # connect to localhost:6600
+    mpdplays = (client.status()["state"]=="play")
+    client.close()                     # send the close command
+    client.disconnect()                # disconnect from the server
+
+    return (spotifyplays or mpdplays)
 
 
 def ActivateScreensaver():
@@ -264,9 +280,9 @@ def Worker():
                 #button not pressed, resetting timer
                 counter=0
 
-            if os.path.exists(spotifyplaysfile):
+            if CheckForAudioPlayers():
                 if (state!=0):
-                    Debug("Spotify plays, so make sure we can here it")
+                    Debug("Spotify or mpd plays, so make sure we can here it")
                     state=0
                     HandleState()
 
@@ -317,7 +333,7 @@ def Initialize():
     keyboard.hook(On_Keyboard_Event)
 
 def Usage():
-      print 'button.py [-h] [-f] [-i] [-c] [-p pidfile] [-l logfile] [-s timeout in seconds]'
+      print ('button.py [-h] [-f] [-i] [-c] [-p pidfile] [-l logfile] [-s timeout in seconds]')
 
 def ReadConfig(ConfigFile):
     global pf
