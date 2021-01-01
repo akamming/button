@@ -154,6 +154,44 @@ def CheckForAudioPlayers():
 
     return (spotifyplays or mpdplays or mopidyplays)
 
+def StopAudioPlayers:
+    #mopidy
+    try:
+        client = MPDClient()               # create client object
+        client.connect("localhost", 6601)  # connect to localhost:6600
+        if client.status()["state"]=="play":
+            Debug("mopidy is playing, ssetting to pause")
+            client.pause()
+        client.close()                     # send the close command
+        client.disconnect()                # disconnect from the server
+    except:
+        Log("error switching off mopidy")
+    
+    #mpd
+    try:
+        client = MPDClient()               # create client object
+        client.connect("localhost", 6600)  # connect to localhost:6600
+        if client.status()["state"]=="play":
+            Debug("mpd is playing, switching off")
+            client.pause()
+        client.close()                     # send the close command
+        client.disconnect()                # disconnect from the server
+    except:
+            Log("error switching off mpd")
+
+    #spotify
+    if os.path.exists(spotifyplaysfile):
+        Debug("Spotify is playing, switch off")
+        # Remove triggerfile
+        try:
+            os.remove(spotifyplaysfile)
+        except:
+            Debug("Error deleting spotifyplaysfile")
+
+        #Stop stopify play
+        os.system(spotifystopcommand)
+    else:
+        Debug("Spotify not playing")
 
 def ActivateScreensaver():
     global ScreenSaving
@@ -191,21 +229,6 @@ def NextState():
     #Toggle the pins
     HandleState()
 
-def StopSpotify():
-    if os.path.exists(spotifyplaysfile):
-        Debug("Spotify is playing, switch off")
-        # Remove triggerfile
-        try:
-            os.remove(spotifyplaysfile)
-        except:
-            Debug("Error deleting spotifyplaysfile")
-
-        #Stop stopify play
-        os.system(spotifystopcommand)
-
-    else:
-        Debug("Spotify not playing")
-
 def On_Button_Release():
     global timestamp
     global state
@@ -228,7 +251,7 @@ def On_Button_Release():
                 if state==0:
                     state=3
                     Debug("Simple mode: switching off tv and marquee")
-                    StopSpotify()
+                    StopAudioPlayers()
 
                 else:
                     Debug("Simple Mode: Switching on tv and marquee")
