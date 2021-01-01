@@ -124,18 +124,35 @@ def CheckForRunningProcesses(processes):
 
 def CheckForAudioPlayers():
 
+    spotifyplays=False;
+    mpdplays=False;
+    mopidyplays=False;
+
     #librespot
     spotifyplays=os.path.exists(spotifyplaysfile)
 
 
     #mpd
-    client = MPDClient()               # create client object
-    client.connect("localhost", 6600)  # connect to localhost:6600
-    mpdplays = (client.status()["state"]=="play")
-    client.close()                     # send the close command
-    client.disconnect()                # disconnect from the server
+    try:
+        client = MPDClient()               # create client object
+        client.connect("localhost", 6600)  # connect to localhost:6600
+        mpdplays = (client.status()["state"]=="play")
+        client.close()                     # send the close command
+        client.disconnect()                # disconnect from the server
+    except:
+        mpdplays = False;                   # when mpd is not there we get an exception
 
-    return (spotifyplays or mpdplays)
+    #mopidy
+    try:
+        client = MPDClient()               # create client object
+        client.connect("localhost", 6601)  # connect to localhost:6601
+        mpdplays = (client.status()["state"]=="play")
+        client.close()                     # send the close command
+        client.disconnect()                # disconnect from the server
+    except:
+        mpdplays = False;                   # when mpd is not there we get an exception
+
+    return (spotifyplays or mpdplays or mopidyplays)
 
 
 def ActivateScreensaver():
