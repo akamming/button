@@ -154,7 +154,7 @@ def CheckForAudioPlayers():
 
     return (spotifyplays or mpdplays or mopidyplays)
 
-def StopAudioPlayers:
+def StopAudioPlayers():
     #mopidy
     try:
         client = MPDClient()               # create client object
