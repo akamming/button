@@ -12,9 +12,13 @@ import sys, getopt
 import keyboard
 
 #define global vars
-marquee = OutputDevice(2, active_high=False, initial_value=True) # Marquee is connected to GPIO2. Change the number in this line in case connected to other pin. 
-TV = OutputDevice(4,  active_high=False, initial_value=True)  #
-button = Button(3)  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
+marquee = OutputDevice(2, active_high=False, initial_value=True)    # Marquee is connected to GPIO2.  
+TV = OutputDevice(4,  active_high=False, initial_value=True)        # Tv is connected to GPIO 4.
+Amplifier = OutputDevice(14,  active_high=False, initial_value=True)        # amplifier is connected to GPIO 14.
+unused = OutputDevice(15,  active_high=False, initial_value=False)        # unused is connected to GPIO 14.
+button = Button(3)                                                  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
+
+
 pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
 spotifyplaysfile = "" #location of file which exists if spotify is playing
@@ -77,23 +81,27 @@ def On_Button_Press():
 def HandleState():        
     # handling state
     if state==0:
-        Log("switching on tv and marquee")
+        Debug("switching on tv and marquee")
         TV.on()
+        Amplifier.on()
         marquee.on()
         RestorePower()
     elif state==1:
-        Log("switching on tv, switching off marquee")
+        Debug("switching on tv, switching off marquee")
         TV.on()
         marquee.off()
+        Amplifier.on()
         RestorePower()
     elif state==2:
-        Log("switching off tv, switching on marquee")
+        Debug("switching off tv, switching on marquee")
         TV.off()
+        Amplifier.off()
         marquee.on()
         SavePower()
     elif state==3:
-        Log("switching off tv and marquee")
+        Debug("switching off tv and marquee")
         TV.off()
+        Amplifier.off()
         marquee.off()
         SavePower()
     else:
@@ -323,25 +331,20 @@ def Worker():
             if CheckForAudioPlayers():
                 if (state!=0):
                     Debug("Spotify or mpd plays, so make sure we can here it")
-                    state=0
-                    HandleState()
-
-                #Reset timestamp, so screen is not immediately blank after last song
-                timestamp=datetime.datetime.now()
-
-                #Deactive Screensaver if it was active
-                if ScreenSaving:
-                    DeactivateScreensaver()
+                    Amplifier.on()
             else:
-                #Check if we have to start screensaving
-                if (ScreenSaver and not ScreenSaving):
-                    #calculate time difference
-                    timestamp2=datetime.datetime.now()
-                    delta=timestamp2-timestamp
-                    elapsedseconds=int(delta.total_seconds())
-                    #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
-                    if (elapsedseconds>=screensavetimeout):
-                        ActivateScreensaver()
+                Debug("Handling state")
+                HandleState()
+
+            #Check if we have to start screensaving
+            if (ScreenSaver and (not ScreenSaving) and (state==0)):
+                #calculate time difference
+                timestamp2=datetime.datetime.now()
+                delta=timestamp2-timestamp
+                elapsedseconds=int(delta.total_seconds())
+                #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
+                if (elapsedseconds>=screensavetimeout):
+                    ActivateScreensaver()
 
     except KeyboardInterrupt:
         Log("Keyboard interrupt, removing PID file")
