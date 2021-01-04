@@ -18,13 +18,26 @@ Amplifier = OutputDevice(14,  active_high=False, initial_value=True)        # am
 unused = OutputDevice(15,  active_high=False, initial_value=False)        # unused is connected to GPIO 14.
 button = Button(3)                                                  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
 
+#states
+STATE_ALLON = 0
+STATE_ONLYTVON = 1
+STATE_ONLYMARQUEEON = 2
+STATE_ALLOFF = 3
+MAX_STATE = STATE_ALLOFF # should be state with the highgest number. Makes sure we can cycle states
 
+#players
+PLAYER_SPOTIFY = 1
+PLAYER_MPD = 2
+PLAYER_MOPIDY=3
+
+
+#vars
 pf = "/tmp/button.pid" #name of pid file
 logfilename = "" #location of logfile
 spotifyplaysfile = "" #location of file which exists if spotify is playing
 spotifystopcommand = "service raspotify restart"  # default value
 timestamp = datetime.datetime.now()
-state = 0 # 0=both on, 1 = Only TV on, 2=only Marquee on, 3 = both off.
+state = STATE_ALLON # 0=both on, 1 = Only TV on, 2=only Marquee on, 3 = both off.
 debug = False
 ignorepidfile=False
 PowerSave=False
@@ -34,6 +47,8 @@ screensavetimeout=0
 ScreenSaving=False
 Simple=False
 screensaveroverrides=""
+lastplayer=0
+
 
 def Log(tekst):
     if len(logfilename)==0:
@@ -77,28 +92,29 @@ def On_Button_Press():
     #disable screensaver if it was active
     #DeactivateScreensaver()
 
-        
+
+
 def HandleState():        
     # handling state
-    if state==0:
+    if state==STATE_ALLON:
         Debug("switching on tv and marquee")
         TV.on()
         Amplifier.on()
         marquee.on()
         RestorePower()
-    elif state==1:
+    elif state==STATE_ONLYTVON:
         Debug("switching on tv, switching off marquee")
         TV.on()
         marquee.off()
         Amplifier.on()
         RestorePower()
-    elif state==2:
+    elif state==STATE_ONLYMARQUEEON:
         Debug("switching off tv, switching on marquee")
         TV.off()
         Amplifier.off()
         marquee.on()
         SavePower()
-    elif state==3:
+    elif state==STATE_ALLOFF:
         Debug("switching off tv and marquee")
         TV.off()
         Amplifier.off()
@@ -131,20 +147,24 @@ def CheckForRunningProcesses(processes):
     return processfound
 
 def CheckForAudioPlayers():
+    global lastplayer
 
     spotifyplays=False;
     mpdplays=False;
     mopidyplays=False;
 
     #librespot
-    spotifyplays=os.path.exists(spotifyplaysfile)
-
+    if os.path.exists(spotifyplaysfile):
+        spotifyplays=True
+        lastplayer=PLAYER_SPOTIFY
 
     #mpd
     try:
         client = MPDClient()               # create client object
         client.connect("localhost", 6600)  # connect to localhost:6600
-        mpdplays = (client.status()["state"]=="play")
+        if (client.status()["state"]=="play"):
+            mpdplays = True
+            lastplayer = PLAYER_MPD
         client.close()                     # send the close command
         client.disconnect()                # disconnect from the server
     except:
@@ -154,13 +174,51 @@ def CheckForAudioPlayers():
     try:
         client = MPDClient()               # create client object
         client.connect("localhost", 6601)  # connect to localhost:6601
-        mpdplays = (client.status()["state"]=="play")
+        if (client.status()["state"]=="play"):
+            mopidyplays = True
+            lastplayer = PLAYER_MOPIDY
         client.close()                     # send the close command
         client.disconnect()                # disconnect from the server
     except:
-        mpdplays = False;                   # when mpd is not there we get an exception
+        mopidyplays = False;                   # when mpd is not there we get an exception
 
     return (spotifyplays or mpdplays or mopidyplays)
+    
+def ToggleAudioPlayer():
+    if lastplayer==PLAYER_MOPIDY:
+        try:
+            client = MPDClient()               # create client object
+            client.connect("localhost", 6601)  # connect to localhost:6600
+            if client.status()["state"]=="play":
+                Debug("mopidy is playing, ssetting to pause")
+                client.pause()
+            elif client.status()["state"]=="pause":
+                Debug("mopidy is on pause, setting to play")
+                client.play()
+            else:
+                Debug("Don't know what state: "+client.status()["state"])
+            client.close()                     # send the close command
+            client.disconnect()                # disconnect from the server
+        except:
+            Log("error switching off mopidy")
+    elif lastplayer==PLAYER_MPD:
+        try:
+            client = MPDClient()               # create client object
+            client.connect("localhost", 6600)  # connect to localhost:6600
+            if client.status()["state"]=="play":
+                Debug("mpd is playing, ssetting to pause")
+                client.pause()
+            elif client.status()["state"]=="pause":
+                Debug("mpd is on pause, setting to play")
+                client.play()
+            else:
+                Debug("Don't know what state: "+client.status()["state"])
+            client.close()                     # send the close command
+            client.disconnect()                # disconnect from the server
+        except:
+            Log("error switching off mpd")
+    elif lastplayer==PLAYER_SPOTIFY:
+        StopAudioPlayers()
 
 def StopAudioPlayers():
     #mopidy
@@ -210,7 +268,7 @@ def ActivateScreensaver():
     else:
         Log("Activating screensaver")
         ScreenSaving=True
-        state=3
+        state=STATE_ALLOFF
         HandleState()
 
 def DeactivateScreensaver():
@@ -220,7 +278,7 @@ def DeactivateScreensaver():
     if (ScreenSaving):
         Log("Deactivating Screensaver")
         ScreenSaving=False
-        state=0
+        state=STATE_ALLOFF
         HandleState()
     else:
         Debug("Not deactivating screensaver")
@@ -229,10 +287,10 @@ def NextState():
     global state
 
     #Inc state (unless it's 3, then it should return to state 0
-    if state<3:
+    if state<MAX_STATE:
         state+=1
     else:
-        state=0
+        state=STATE_ALLON
 
     #Toggle the pins
     HandleState()
@@ -256,14 +314,14 @@ def On_Button_Release():
             DeactivateScreensaver()
         else:
             if Simple:
-                if state==0:
-                    state=3
+                if state==STATE_ALLON:
+                    state=STATE_ALLOFF
                     Debug("Simple mode: switching off tv and marquee")
                     StopAudioPlayers()
 
                 else:
                     Debug("Simple Mode: Switching on tv and marquee")
-                    state=0
+                    state=STATE_ALLON
                 #Make sure the state is handled
                 HandleState()
             else:
@@ -280,17 +338,23 @@ def On_Keyboard_Event(event):
     #resetting timestamp to prevent screensaver kicking in
     timestamp=datetime.datetime.now()
 
-    if (ScreenSaving):
-        #disable screensaver if it was active
-        DeactivateScreensaver()
+    if (event.name=='j'):
+        if (event.event_type=='up' and state==STATE_ALLOFF):
+            # Right flipper released while screen off, so toggle audio players.
+            ToggleAudioPlayer()
     else:
-        #if state=2 (TV off) or 3 (everything off), switch to state 0 at keyboard event
-        if (state==2 or state==3):
-            Debug("State was 2 or 3 on keyboard event, switching to 0")
-            state=0
-            HandleState()
+        #bring back 
+        if (ScreenSaving):
+            #disable screensaver if it was active
+            DeactivateScreensaver()
         else:
-            Debug("Ignoring keyboard event")
+            #if state=2 (TV off) or 3 (everything off), switch to state 0 at keyboard event
+            if (state==STATE_ALLOFF or state==STATE_ONLYMARQUEEON):
+                Debug("State was 2 or 3 on keyboard event, switching to 0")
+                state=STATE_ALLON
+                HandleState()
+            else:
+                Debug("Ignoring keyboard event")
 
 def Worker():
     global counter
@@ -329,22 +393,19 @@ def Worker():
                 counter=0
 
             if CheckForAudioPlayers():
-                if (state!=0):
-                    Debug("Spotify or mpd plays, so make sure we can here it")
-                    Amplifier.on()
+                Debug("Spotify or mpd plays, so make sure we can here it")
+                Amplifier.on()
             else:
-                Debug("Handling state")
                 HandleState()
-
-            #Check if we have to start screensaving
-            if (ScreenSaver and (not ScreenSaving) and (state==0)):
-                #calculate time difference
-                timestamp2=datetime.datetime.now()
-                delta=timestamp2-timestamp
-                elapsedseconds=int(delta.total_seconds())
-                #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
-                if (elapsedseconds>=screensavetimeout):
-                    ActivateScreensaver()
+                #Check if we have to start screensaving only if audio is off
+                if (ScreenSaver and (not ScreenSaving) and (state==0)):
+                    #calculate time difference
+                    timestamp2=datetime.datetime.now()
+                    delta=timestamp2-timestamp
+                    elapsedseconds=int(delta.total_seconds())
+                    #Debug("Time to screensaver = "+str(screensavetimeout-elapsedseconds))
+                    if (elapsedseconds>=screensavetimeout):
+                        ActivateScreensaver()
 
     except KeyboardInterrupt:
         Log("Keyboard interrupt, removing PID file")
