@@ -12,8 +12,8 @@ import sys, getopt
 import keyboard
 
 #define global vars
-marquee = OutputDevice(2, active_high=False, initial_value=True)    # Marquee is connected to GPIO2.  
-TV = OutputDevice(4,  active_high=False, initial_value=True)        # Tv is connected to GPIO 4.
+marquee = OutputDevice(2, active_high=True, initial_value=True)    # Marquee is connected to GPIO2.  
+TV = OutputDevice(4,  active_high=True, initial_value=True)        # Tv is connected to GPIO 4.
 Amplifier = OutputDevice(14,  active_high=False, initial_value=True)        # amplifier is connected to GPIO 14.
 unused = OutputDevice(15,  active_high=False, initial_value=False)        # unused is connected to GPIO 14.
 button = Button(3)                                                  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
