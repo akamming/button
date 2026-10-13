@@ -12,11 +12,10 @@ import sys, getopt
 import keyboard
 
 #define global vars
-marquee = OutputDevice(2, active_high=True, initial_value=True)    # Marquee is connected to GPIO2.  
+marquee = OutputDevice(17, active_high=True, initial_value=True)    # Marquee is connected to GPIO2.  
 TV = OutputDevice(4,  active_high=True, initial_value=True)        # Tv is connected to GPIO 4.
-Amplifier = OutputDevice(14,  active_high=False, initial_value=True)        # amplifier is connected to GPIO 14.
 unused = OutputDevice(15,  active_high=False, initial_value=False)        # unused is connected to GPIO 14.
-button = Button(3)                                                  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
+button = Button(27)                                                  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
 
 #states
 STATE_ALLON = 0
@@ -99,25 +98,21 @@ def HandleState():
     if state==STATE_ALLON:
         Debug("switching on tv and marquee")
         TV.on()
-        Amplifier.on()
         marquee.on()
         RestorePower()
     elif state==STATE_ONLYTVON:
         Debug("switching on tv, switching off marquee")
         TV.on()
         marquee.off()
-        Amplifier.on()
         RestorePower()
     elif state==STATE_ONLYMARQUEEON:
         Debug("switching off tv, switching on marquee")
         TV.off()
-        Amplifier.off()
         marquee.on()
         SavePower()
     elif state==STATE_ALLOFF:
         Debug("switching off tv and marquee")
         TV.off()
-        Amplifier.off()
         marquee.off()
         SavePower()
     else:
@@ -394,7 +389,6 @@ def Worker():
 
             if CheckForAudioPlayers():
                 Debug("Spotify or mpd plays, so make sure we can here it")
-                Amplifier.on()
             else:
                 HandleState()
                 #Check if we have to start screensaving only if audio is off
