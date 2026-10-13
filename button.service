@@ -1,0 +1,13 @@
+[Unit]
+Description=button service
+
+[Service]
+ExecStart=python3 /opt/button/button.py -c /etc/button.ini -f &
+WorkingDirectory = /var/log/button
+Type=simple
+Restart=on-failure
+RestartSec=1m
+
+
+[Install]
+WantedBy=multi-user.target
