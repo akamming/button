@@ -12,10 +12,10 @@ import sys, getopt
 import keyboard
 
 #define global vars
-marquee = OutputDevice(17, active_high=True, initial_value=True)    # Marquee is connected to GPIO2.  
+marquee = OutputDevice(17, active_high=True, initial_value=True)    # Marquee is connected to GPIO17.  
 TV = OutputDevice(4,  active_high=True, initial_value=True)        # Tv is connected to GPIO 4.
 unused = OutputDevice(15,  active_high=False, initial_value=False)        # unused is connected to GPIO 14.
-button = Button(27)                                                  # Power button connected to GPIO3. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state
+button = Button(27)                                                  # Power button connected to GPIO27. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state (won't work on rixie when also using iqaudiodac)
 
 #states
 STATE_ALLON = 0
