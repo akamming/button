@@ -15,7 +15,7 @@ import keyboard
 marquee = OutputDevice(17, active_high=True, initial_value=True)    # Marquee is connected to GPIO17.  
 TV = OutputDevice(4,  active_high=True, initial_value=True)        # Tv is connected to GPIO 4.
 unused = OutputDevice(15,  active_high=False, initial_value=False)        # unused is connected to GPIO 14.
-button = Button(27)                                                  # Power button connected to GPIO27. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state (won't work on rixie when also using iqaudiodac)
+button = Button(27, bounce_time=0.01)                                                  # Power button connected to GPIO27. Change the number in this line if it is on another pin. it is however highly recommnended not to use another pin, but to connect this button to pin 5 (gpio3) and ping 6 (GND), cause this will make the power button als bootup the pi from  a halted state (won't work on rixie when also using iqaudiodac)
 
 #states
 STATE_ALLON = 0
@@ -296,34 +296,25 @@ def On_Button_Release():
 
     Debug("Event: Power button released")
 
-    #check if press was long enough
-    timestamp2=datetime.datetime.now()
-    delta=timestamp2-timestamp
-    milliseconds=int(delta.total_seconds()*1000)
-    Debug("button release after "+str(milliseconds)+" milliseconds")
-    if milliseconds<10:
-        Debug("too short, Ignoring event")
+    if ScreenSaving:
+        DeactivateScreensaver()
     else:
-        #we have a valid press
-        if (ScreenSaving):
-            DeactivateScreensaver()
-        else:
-            if Simple:
-                if state==STATE_ALLON:
-                    state=STATE_ALLOFF
-                    Debug("Simple mode: switching off tv and marquee")
-                    StopAudioPlayers()
-
-                else:
-                    Debug("Simple Mode: Switching on tv and marquee")
-                    state=STATE_ALLON
-                #Make sure the state is handled
-                HandleState()
+        if Simple:
+            if state == STATE_ALLON:
+                state = STATE_ALLOFF
+                Debug("Simple mode: switching off tv and marquee")
+                StopAudioPlayers()
             else:
-                NextState()
+                Debug("Simple Mode: Switching on tv and marquee")
+                state = STATE_ALLON
 
-    #Update timestamp for sreensaver
-    timestamp=timestamp2
+            HandleState()
+        else:
+            NextState()
+
+    # Update timestamp for screensaver
+    timestamp = datetime.datetime.now()
+
 
 def On_Keyboard_Event(event):
     global timestamp
@@ -390,7 +381,7 @@ def Worker():
             if CheckForAudioPlayers():
                 Debug("Spotify or mpd plays, so make sure we can here it")
             else:
-                HandleState()
+                #HandleState()
                 #Check if we have to start screensaving only if audio is off
                 if (ScreenSaver and (not ScreenSaving) and (state==0)):
                     #calculate time difference
